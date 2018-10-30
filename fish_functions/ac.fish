@@ -1,3 +1,4 @@
 function ac
-  git add $arg[1]; git commit -m $arg[2]
+  git add $argv[1]
+  git commit -m $argv[2]
 end
