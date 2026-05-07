@@ -1,0 +1,237 @@
+call plug#begin('~/.vim/plugged')
+
+" vimproc is a great asynchronous execution library for Vim
+Plug 'Shougo/vimproc.vim', {'do' : 'make'}
+
+" Git wrapper
+Plug 'tpope/vim-fugitive'
+
+" Syntax highlighting and filetype plugins for Markdown
+Plug 'tpope/vim-markdown'
+
+" EasyMotion provides a much simpler way to use some motions in vim
+Plug 'easymotion/vim-easymotion'
+
+" Sparkup lets you write HTML code faster
+Plug 'rstacruz/sparkup', {'rtp': 'vim/'}
+
+" Provides support for expanding abbreviations
+Plug 'mattn/emmet-vim'
+
+" Run your favorite search tool from Vim, with an enhanced results list.
+Plug 'mileszs/ack.vim'
+
+" Utility functions and commands for programming in Vim
+Plug 'Daniel451/L9'
+
+" Adds CoffeeScript support to vim
+Plug 'kchmck/vim-coffee-script'
+
+" Another attempt to bring Sublime Text's awesome multiple selection.
+Plug 'terryma/vim-multiple-cursors'
+
+" The NERDTree is a file system explorer for the Vim editor
+Plug 'scrooloose/nerdtree'
+
+" Super simple vim plugin to show the list of buffers in the command bar.
+Plug 'bling/vim-bufferline'
+
+" Lean & mean status/tabline for vim that's light as air.
+Plug 'vim-airline/vim-airline'
+
+" This is the official theme repository for vim-airline
+Plug 'vim-airline/vim-airline-themes'
+
+" A simple, easy-to-use Vim alignment plugin.
+Plug 'junegunn/vim-easy-align'
+
+" One stop shop for vim colorschemes
+Plug 'flazz/vim-colorschemes'
+
+" Prolog
+Plug 'bluz71/vim-nightfly-colors', { 'as': 'nightfly' }
+
+Plug 'gleam-lang/gleam.vim'
+
+Plug 'voldikss/vim-floaterm'
+Plug 'junegunn/fzf'
+Plug 'junegunn/fzf.vim'
+Plug 'airblade/vim-gitgutter'
+Plug 'tpope/vim-surround'
+Plug 'ryanoasis/vim-devicons'
+Plug 'nathanaelkane/vim-indent-guides'
+
+Plug 'prettier/vim-prettier', {
+      \ 'do': 'npm install',
+      \ 'for': ['javascript', 'typescript', 'css', 'json', 'markdown'] }
+
+source ~/.vim/custom/plugged
+call plug#end()
+
+source ~/.vim/vim_config.vim
+source ~/.vim/custom/config
+
+" Fix backspace problem
+noremap! <C-?> <C-h>
+
+let g:airline_powerline_fonts = 1
+let g:airline_theme='deus'
+
+let g:ctrlp_custom_ignore = {
+  \ 'dir': 'node_modules\|deps\|_build|sites',
+   \ 'file': '\v\.(js|ts)$'
+\ }
+
+colorscheme nightfly
+
+set termguicolors
+
+let $FZF_DEFAULT_COMMAND = 'rg --files --hidden --glob "!.git/*"'
+command! -bang -nargs=* Rg
+  \ call fzf#vim#grep(
+  \   'rg --column --line-number --no-heading --color=always --smart-case '.shellescape(<q-args>), 1,
+  \   fzf#vim#with_preview(), <bang>0)
+
+let g:fzf_preview_window = ['right:50%:wrap', 'ctrl-/']
+
+let mapleader = ","
+" Press Ctrl + p
+nnoremap <C-p> :Files<CR>
+" Press Ctrl + b
+nnoremap <C-b> :Buffers<CR>
+" Press , then r
+nnoremap <Leader>r :Rg<CR>
+
+" Define surround using key `f` (or any free letter) Press ysiwf
+let g:surround_102 = "def \r() do\nend"
+
+" Press , then d
+" Add @doc block above the line with ,d
+nnoremap <Leader>d O@doc """<CR>"""<Esc>k
+
+" Press , then m
+" Insert @moduledoc block above the current line
+nnoremap <Leader>m O@moduledoc """<CR>"""<Esc>k
+
+" Press , then s
+" Add @spec line above with ,s
+nnoremap <Leader>s O@spec <Esc>
+
+function! InsertSpecLine()
+  " Yank current function name
+  normal! yiw
+  let fname = @"
+  " Insert @spec line above with function name
+  execute "normal! O@spec " . fname . "() :: "
+endfunction
+
+nnoremap <Leader>s :call InsertSpecLine()<CR>
+
+function! WrapWithDefBlock()
+  " Yank the current word under the cursor
+  normal! yiw
+  let fname = @"
+  " Replace the word with def ... do ... end
+  let replacement = "def " . fname . "() do\nend"
+  " Visually select the word and paste the block
+  normal! viw"_d
+  call append(line('.') - 1, split(replacement, '\n'))
+endfunction
+
+" Press , then f
+nnoremap <Leader>f :call WrapWithDefBlock()<CR>
+
+let g:indent_guides_enable_on_vim_startup = 1
+
+" Press , then n
+nnoremap <Leader>n :NERDTreeToggle<CR>
+
+function! RunCurrentTestInTmuxWindow()
+  let filepath = expand('%:p')        " full path to current file
+  let line = line('.')
+  let cmd = 'mix test ' . filepath . ':' . line
+
+  " Run in new tmux window and keep it open
+  let tmux_cmd = 'tmux new-window -n test_runner "clear && echo Running: ' . cmd . ' && ' . cmd . ' ; exec $SHELL"'
+
+  call system(tmux_cmd)
+endfunction
+
+nnoremap <Leader>t :call RunCurrentTestInTmuxWindow()<CR>
+
+function! InsertDescribeBlock()
+  normal! yiw
+  let fname = @"
+  execute "normal! Odescribe \"" . fname . "\" do\rend"
+endfunction
+
+nnoremap <Leader>db :call InsertDescribeBlock()<CR>
+
+function! InsertTestBlock()
+  normal! yiw
+  let fname = @"
+  execute "normal! Otest \"" . fname . "\" do\r  assert false\rend"
+endfunction
+
+nnoremap <Leader>tb :call InsertTestBlock()<CR>
+
+function! InsertModuleBlock()
+  " Get module name under cursor
+  normal! yiw
+  let modname = @"
+
+  " Delete the current line (assumes it's just the module name)
+  let line_num = line('.')
+  execute line_num . 'delete _'
+
+  " Insert the module block in its place
+  let lines = [
+        \ 'defmodule ' . modname . ' do',
+        \ '  @moduledoc false',
+        \ 'end'
+        \ ]
+  call append(line_num - 1, lines)
+
+  " Auto-indent the newly inserted block
+  execute line_num . ',' . (line_num + len(lines) - 1) . 'normal ='
+endfunction
+
+nnoremap <Leader>mb :call InsertModuleBlock()<CR>
+
+set tags=.git/tags;
+
+" Optional: map format manually
+nnoremap <Leader>tsp :Prettier<CR>
+
+Plug 'elixir-editors/vim-elixir'
+Plug 'mhinz/vim-mix-format'
+
+autocmd BufRead,BufNewFile *.heex set filetype=eelixir
+
+function! ShowBranchCommitsInBuffer()
+  let lines = systemlist('git log origin/main..HEAD --pretty=format:"%ar %an %s"')
+
+  new
+  call setline(1, lines)
+  setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile readonly
+
+  " Syntax highlighting
+  syntax match GitTime /^\S\+\s\+\S\+/
+  syntax match GitAuthor /^\S\+\s\+\zs\S\+\s\+\S\+/
+  syntax match GitMessage /^\S\+\s\+\S\+\s\+\S\+\s\+\zs.*/
+
+  highlight GitTime ctermfg=Yellow guifg=Yellow
+  highlight GitAuthor ctermfg=Cyan guifg=Cyan
+  highlight GitMessage ctermfg=White guifg=White
+endfunction
+
+nnoremap <Leader>g :call ShowBranchCommitsInBuffer()<CR>
+
+" Yank visually selected text to system clipboard
+vnoremap <leader>y "*y
+
+" Yank entire line to system clipboard
+nnoremap <leader>y "*yy
+
+let g:NERDTreeWinPos = "right"
+
